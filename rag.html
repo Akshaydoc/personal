@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG Lab — Interactive RAG Simulator</title>
+<style>
+:root{
+  --bg:#07111f;--panel:#0c1a2b;--panel2:#102238;--line:#213b54;
+  --text:#edf5fb;--muted:#8ea7bc;--cyan:#61dafb;--purple:#9b8cff;
+  --green:#4fdb9b;--yellow:#ffc857;--red:#ff6f7d;
+  --shadow:0 18px 55px rgba(0,0,0,.28);
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 10% 0%,#12314d 0,#07111f 38%,#050b13 100%);
+color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+.app{min-height:100vh;display:grid;grid-template-columns:285px 1fr}
+.sidebar{height:100vh;position:sticky;top:0;overflow:auto;padding:22px;background:rgba(5,13,24,.94);border-right:1px solid var(--line)}
+.logo{display:flex;gap:11px;align-items:center;margin-bottom:24px}
+.logoMark{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;
+background:linear-gradient(135deg,var(--cyan),var(--purple));color:#06111c;font-weight:900}
+.logo h1{font-size:17px;margin:0}.logo small{color:var(--muted)}
+.step{display:flex;gap:10px;align-items:center;padding:9px;border:1px solid transparent;border-radius:10px;
+color:var(--muted);margin:3px 0;transition:.2s}
+.step:hover{background:#0c2034}.step.active{background:#102b42;border-color:#28506e;color:#fff}
+.step.done{color:#a9dcca}.num{width:27px;height:27px;border:1px solid #36536b;border-radius:50%;
+display:grid;place-items:center;font-size:11px;font-weight:800;flex:none}.step.active .num{background:var(--cyan);color:#06111c;border-color:var(--cyan)}
+.status{margin-top:20px;border:1px solid var(--line);background:#091726;border-radius:12px;padding:12px}
+.statusRow{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;padding:4px 0}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px}
+.main{width:100%;max-width:1500px;margin:auto;padding:28px}
+.top{display:flex;justify-content:space-between;gap:20px;margin-bottom:20px}
+.eyebrow{color:var(--cyan);font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+h2{font-size:29px;margin:5px 0}.subtitle{margin:0;color:var(--muted);max-width:820px;line-height:1.55;font-size:13px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid #2b4b65;background:#10243a;color:#dceaf5;
+border-radius:9px;padding:9px 13px}.btn:hover{background:#14304a;border-color:#4a718f}.primary{border:0!important;
+background:linear-gradient(135deg,#48cbe9,#8d80ff)!important;color:#06111c!important;font-weight:800}
+.card{background:linear-gradient(180deg,rgba(14,33,53,.96),rgba(9,23,39,.96));border:1px solid var(--line);
+border-radius:15px;box-shadow:var(--shadow);overflow:hidden}
+.head{padding:15px 17px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.head h3{font-size:14px;margin:0}.badge{font-size:10px;color:#9fc1d8;background:#122a40;border:1px solid #294a63;padding:5px 8px;border-radius:99px}
+.body{padding:17px}
+.arch{margin-bottom:17px}.pipeline{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.node{position:relative;min-height:83px;padding:10px;border:1px solid #29465e;background:#091a2b;border-radius:10px;cursor:pointer}
+.node:hover{border-color:#527b99}.node.active{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(97,218,251,.2)}
+.node.done{border-color:#2e745d}.node small{font-size:9px;color:#718da4}.node b{display:block;font-size:11px;margin-top:5px}.node span{display:block;font-size:9px;color:#7e99ae;line-height:1.3;margin-top:4px}
+.arrow{position:absolute;right:-12px;top:32px;color:#56758e;z-index:2}
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-top:13px}
+.metric{background:#091827;border:1px solid var(--line);border-radius:9px;padding:11px}
+.metric label{display:block;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.metric strong{font-size:20px;display:block;margin-top:4px}
+.grid{display:grid;grid-template-columns:1.25fr .75fr;gap:17px}
+.tabs{display:flex;gap:4px;padding:0 17px;border-bottom:1px solid var(--line)}
+.tab{border:0;border-bottom:2px solid transparent;background:none;color:var(--muted);padding:10px 8px;font-size:11px}
+.tab.active{color:#fff;border-color:var(--cyan)}
+.panel{display:none}.panel.active{display:block}
+label{font-size:10px;color:#9cb4c8;display:block;margin-bottom:6px}
+textarea,.query,select{width:100%;background:#061420;color:#dce9f2;border:1px solid #28475f;border-radius:9px;
+padding:11px;outline:none}.query{font-size:14px}.query:focus,textarea:focus,select:focus{border-color:var(--cyan)}
+textarea{min-height:205px;resize:vertical;line-height:1.5;font-size:12px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:11px}.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.chip{font-size:9px;color:#abc2d3;
+background:#091a2a;border:1px solid #2a485f;border-radius:7px;padding:5px 7px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.log{height:290px;overflow:auto;background:#06111c;border:1px solid #1d354b;border-radius:9px;padding:11px;
+font:11px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;color:#91b1c7}.log .ok{color:var(--green)}.log .info{color:var(--cyan)}
+.log .warn{color:var(--yellow)}.log .bad{color:var(--red)}
+.results{display:flex;flex-direction:column;gap:8px;margin-top:13px}.result{padding:11px;border:1px solid #27455d;background:#081a2b;border-radius:9px}
+.resultTop{display:flex;justify-content:space-between;gap:10px}.result b{font-size:11px}.score{font:10px ui-monospace;color:var(--green)}
+.result p{font-size:10px;color:#8fa8ba;line-height:1.45;margin:6px 0}.tag{font-size:9px;color:#a9bfd0}
+.bar{height:5px;background:#06111c;border-radius:9px;overflow:hidden}.bar i{height:100%;display:block;background:linear-gradient(90deg,var(--cyan),var(--purple))}
+pre{white-space:pre-wrap;word-break:break-word;background:#06111c;border:1px solid #1d354b;border-radius:9px;
+padding:11px;color:#b8d0df;font:10px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;max-height:330px;overflow:auto}
+.answer{min-height:130px}.teach{font-size:11px;color:#a1b8c9;line-height:1.65;margin:0}
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.kpi .metric strong{font-size:18px}
+.sectionTitle{font-size:11px;color:#d9e8f2;font-weight:800;margin:14px 0 7px}
+footer{text-align:center;color:#5e778c;font-size:10px;padding:24px}
+@media(max-width:1050px){.app{grid-template-columns:1fr}.sidebar{display:none}.grid{grid-template-columns:1fr}.pipeline{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:650px){.main{padding:15px}.top{flex-direction:column}.row,.metrics,.kpi{grid-template-columns:1fr 1fr}.pipeline{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="logo"><div class="logoMark">R</div><div><h1>RAG Lab</h1><small>Interactive simulator</small></div></div>
+  <div id="stepList"></div>
+  <div class="status">
+    <div class="statusRow"><span>Pipeline</span><b id="status">Ready</b></div>
+    <div class="statusRow"><span><i class="dot"></i>Local simulation</span><span>Browser</span></div>
+    <div class="statusRow"><span>LLM / DB</span><span>Mocked</span></div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="top">
+    <div>
+      <div class="eyebrow">Retrieval Augmented Generation</div>
+      <h2>Understand RAG by running it</h2>
+      <p class="subtitle">Explore the complete RAG lifecycle: ingestion → parsing → advanced chunking → embeddings → hybrid retrieval → fusion → reranking → context compression → prompt construction → generation → evaluation.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="reset">Reset</button>
+      <button class="btn primary" id="run">▶ Run full pipeline</button>
+    </div>
+  </div>
+
+  <section class="card arch">
+    <div class="head"><h3>RAG architecture map</h3><span class="badge" id="stageBadge">1 / 12</span></div>
+    <div class="body">
+      <div class="pipeline" id="pipeline"></div>
+      <div class="metrics">
+        <div class="metric"><label>Documents</label><strong id="docsN">3</strong></div>
+        <div class="metric"><label>Chunks</label><strong id="chunksN">0</strong></div>
+        <div class="metric"><label>Dense candidates</label><strong id="denseN">0</strong></div>
+        <div class="metric"><label>Reranked</label><strong id="rerankN">0</strong></div>
+        <div class="metric"><label>Final context</label><strong id="contextN">0</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <div class="head"><h3 id="stageTitle">1. Document ingestion</h3><span class="badge" id="mode">Ingestion</span></div>
+      <div class="tabs">
+        <button class="tab active" data-tab="workspace">Workspace</button>
+        <button class="tab" data-tab="retrieval">Retrieval</button>
+        <button class="tab" data-tab="generation">Generation</button>
+        <button class="tab" data-tab="evaluation">Evaluation</button>
+      </div>
+
+      <div class="panel active" id="workspace"><div class="body">
+        <label>Knowledge base / documents</label>
+        <textarea id="documents">RAG systems combine a language model with an external knowledge source. The retriever finds relevant evidence before generation.
+
+Advanced retrieval can combine dense vector search with sparse lexical search. Dense embeddings capture semantic similarity, while BM25 is useful for exact terms, IDs, rare keywords and lexical matches.
+
+Reranking is a second-stage retrieval step. A cross-encoder can inspect the query and candidate passage together and produce a more precise relevance score after a cheaper first-stage search.
+
+Chunking strongly affects retrieval recall and context quality. Recursive, semantic, hierarchical and parent-child chunking are common strategies. Metadata can include document ID, section, page, timestamp and access permissions.
+
+Query rewriting, multi-query retrieval and HyDE can improve recall for difficult questions. HyDE generates a hypothetical answer and uses it to retrieve semantically related evidence.
+
+Context compression removes redundant or low-value text before the prompt reaches the LLM. MMR can reduce redundancy among retrieved chunks.
+
+A production RAG system should monitor retrieval recall, precision@k, MRR, nDCG, faithfulness, answer relevance, latency, token usage, citation correctness and failure cases.</textarea>
+        <div class="controls"><button class="btn primary" id="step">Run current stage →</button><button class="btn" id="sample">Load advanced sample</button></div>
+      </div></div>
+
+      <div class="panel" id="retrieval"><div class="body">
+        <label>User query</label>
+        <input class="query" id="query" value="How does reranking improve RAG retrieval and why combine dense and sparse search?">
+        <div class="chips">
+          <span class="chip">Dense embeddings</span><span class="chip">BM25</span><span class="chip">RRF fusion</span>
+          <span class="chip">Cross-encoder</span><span class="chip">MMR</span><span class="chip">Metadata filters</span>
+          <span class="chip">Query rewriting</span><span class="chip">HyDE</span>
+        </div>
+        <div class="sectionTitle">Candidate passages</div>
+        <div class="results" id="results"></div>
+      </div></div>
+
+      <div class="panel" id="generation"><div class="body">
+        <div class="row">
+          <div><label>System prompt</label><pre>You are a grounded assistant.
+Answer using only the supplied context.
+If evidence is insufficient, say so.
+Cite source IDs after factual claims.</pre></div>
+          <div><label>Context budget</label><input class="query" value="2200 tokens">
+            <div class="sectionTitle">Prompt strategy</div>
+            <div class="chips"><span class="chip">Grounded</span><span class="chip">Citations</span><span class="chip">No unsupported claims</span></div>
+          </div>
+        </div>
+        <div class="sectionTitle">Simulated generated answer</div>
+        <pre class="answer" id="answer">Run the pipeline to construct a grounded answer.</pre>
+      </div></div>
+
+      <div class="panel" id="evaluation"><div class="body">
+        <div class="kpi">
+          <div class="metric"><label>Recall@5</label><strong id="recall">—</strong></div>
+          <div class="metric"><label>MRR</label><strong id="mrr">—</strong></div>
+          <div class="metric"><label>Faithfulness</label><strong id="faith">—</strong></div>
+          <div class="metric"><label>Latency</label><strong id="latency">—</strong></div>
+        </div>
+        <div class="sectionTitle">Evaluation interpretation</div>
+        <pre id="evalText">Evaluation appears after the retrieval and generation stages.</pre>
+      </div></div>
+    </section>
+
+    <aside class="card">
+      <div class="head"><h3>Live execution trace</h3><span class="badge">Trace</span></div>
+      <div class="body"><div class="log" id="log"></div></div>
+      <div class="head"><h3>What this stage teaches</h3></div>
+      <div class="body"><p class="teach" id="teach"></p></div>
+    </aside>
+  </div>
+  <footer>Educational HTML-only simulator • No API keys • No backend • Retrieval and LLM outputs are intentionally simulated.</footer>
+</main>
+</div>
+
+<script>
+const stages=[
+ ["Ingestion","Load PDFs, HTML, Markdown, database rows or APIs. Preserve stable document IDs and source metadata."],
+ ["Parsing","Extract text while preserving headings, tables, pages, code blocks and document hierarchy. Bad parsing creates bad retrieval."],
+ ["Advanced chunking","Compare recursive, semantic, hierarchical and parent-child chunks. Chunk size and overlap affect recall, context and cost."],
+ ["Embedding","Convert chunks into vectors. Different embedding models create different vector spaces; query and document embeddings must be compatible."],
+ ["Query understanding","Rewrite ambiguous questions, generate multiple query variants, or use HyDE to improve recall on difficult questions."],
+ ["Dense retrieval","Search the vector index for semantic matches. Approximate nearest-neighbor indexes trade accuracy, speed and memory."],
+ ["Sparse retrieval","Use lexical retrieval such as BM25. Sparse search is valuable for exact names, IDs, rare words and terminology."],
+ ["Fusion","Combine independent retrievers. Reciprocal Rank Fusion (RRF) can merge rankings without requiring scores to be calibrated."],
+ ["Reranking","A cross-encoder or late-interaction reranker examines query + candidate together. It is more expensive, so use it after first-stage retrieval."],
+ ["Compression / MMR","Remove redundant passages and compress context. MMR balances relevance against diversity."],
+ ["Prompt + generation","Build a grounded prompt with the selected evidence, instructions and citations, then generate the response."],
+ ["Evaluation","Measure retrieval and generation separately: Recall@k, MRR/nDCG, faithfulness, answer relevance, citation correctness, latency and cost."]
+];
+
+const docs=document.getElementById("documents");
+const pipeline=document.getElementById("pipeline");
+const stepList=document.getElementById("stepList");
+const log=document.getElementById("log");
+let current=0, chunks=0, dense=0, reranked=0, context=0, running=false;
+
+function buildUI(){
+  stepList.innerHTML=stages.map((s,i)=>`<div class="step ${i===0?'active':''}" data-i="${i}"><span class="num">${i+1}</span><span>${s[0]}</span></div>`).join("");
+  pipeline.innerHTML=stages.map((s,i)=>`<div class="node ${i===0?'active':''}" data-i="${i}">
+    <small>${String(i+1).padStart(2,"0")}</small><b>${s[0]}</b><span>${short(s[1])}</span>${i<stages.length-1?'<i class="arrow">›</i>':''}
+  </div>`).join("");
+  document.querySelectorAll(".step,.node").forEach(el=>el.onclick=()=>selectStage(+el.dataset.i));
+  updateTeach();
+}
+function short(x){return x.split(".")[0]+"."}
+function selectStage(i){
+  current=i;
+  document.querySelectorAll(".step").forEach((e,n)=>e.classList.toggle("active",n===i));
+  document.querySelectorAll(".node").forEach((e,n)=>e.classList.toggle("active",n===i));
+  document.getElementById("stageTitle").textContent=`${i+1}. ${stages[i][0]}`;
+  document.getElementById("mode").textContent=stages[i][0];
+  document.getElementById("stageBadge").textContent=`${i+1} / ${stages.length}`;
+  updateTeach();
+}
+function updateTeach(){document.getElementById("teach").textContent=stages[current][1]}
+function addLog(msg,type="info"){
+  const t=new Date().toLocaleTimeString();
+  log.innerHTML+=`<div class="${type}">[${t}] ${msg}</div>`;
+  log.scrollTop=log.scrollHeight;
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+function updateMetrics(){
+  docsN.textContent=3;
+  chunksN.textContent=chunks;
+  denseN.textContent=dense;
+  rerankN.textContent=reranked;
+  contextN.textContent=context;
+}
+function tokenize(s){return s.toLowerCase().split(/[^a-z0-9]+/).filter(x=>x.length>2)}
+function makeChunks(){
+  const text=docs.value.trim();
+  const paras=text.split(/\n\s*\n/).filter(Boolean);
+  return paras.flatMap((p,i)=>{
+    const words=p.split(/\s+/);
+    if(words.length<70)return [{id:`D${i+1}-C1`,text:p,source:`doc-${i+1}`}];
+    const out=[]; for(let j=0;j<words.length;j+=55) out.push({id:`D${i+1}-C${out.length+1}`,text:words.slice(j,j+70).join(" "),source:`doc-${i+1}`});
+    return out;
+  });
+}
+function retrieve(){
+  const q=tokenize(document.getElementById("query").value);
+  const cs=makeChunks();
+  const scored=cs.map((c,i)=>{
+    const words=tokenize(c.text), overlap=q.filter(x=>words.includes(x)).length;
+    const semantic=Math.min(.98,.42+overlap*.075+(i%4)*.025);
+    const sparse=Math.min(.99,.30+overlap*.105+(q.some(x=>c.text.toLowerCase().includes(x))?.08:0));
+    return {...c,semantic,sparse,rrf:1/(60+i+1)+1/(60+(cs.length-i)),score:semantic*.62+sparse*.38};
+  }).sort((a,b)=>b.score-a.score);
+  dense=Math.min(8,scored.length); reranked=Math.min(5,scored.length); context=Math.min(4,scored.length);
+  const top=scored.slice(0,5);
+  document.getElementById("results").innerHTML=top.map((x,i)=>`
+   <div class="result"><div class="resultTop"><b>${i+1}. ${x.id}</b><span class="score">${(x.score*100).toFixed(1)}%</span></div>
+   <p>${x.text}</p><div class="tag">dense ${(x.semantic*100).toFixed(0)}% · sparse ${(x.sparse*100).toFixed(0)}% · fused rank ${i+1}</div>
+   <div class="bar"><i style="width:${x.score*100}%"></i></div></div>`).join("");
+  return top;
+}
+async function runStage(i){
+  if(i===0){addLog("Reading documents and assigning stable source IDs…","info");await sleep(450);addLog("3 logical documents detected.","ok")}
+  if(i===1){addLog("Parsing text, headings and paragraph boundaries…","info");await sleep(450);addLog("Structure normalized; metadata preserved.","ok")}
+  if(i===2){const cs=makeChunks();chunks=cs.length;addLog(`Advanced chunking produced ${chunks} chunks using structure-aware windows + overlap.`,"ok")}
+  if(i===3){addLog("Creating dense vectors with a simulated embedding model…","info");await sleep(500);addLog("Embedding space ready; query/document vectors are compatible.","ok")}
+  if(i===4){addLog("Generating rewritten / expanded query variants and a HyDE-style hypothetical document…","info");await sleep(450);addLog("Query expansion complete.","ok")}
+  if(i===5){const top=retrieve();addLog(`Dense ANN search → ${dense} candidate passages.`,"ok");addLog(`Top dense candidate: ${top[0]?.id||"none"}`,"info")}
+  if(i===6){retrieve();addLog("BM25-style lexical search → exact term matches scored.","ok")}
+  if(i===7){retrieve();addLog("RRF fusion merged dense + sparse rankings without score calibration.","ok")}
+  if(i===8){retrieve();addLog(`Cross-encoder reranker rescored ${dense} candidates → top ${reranked}.`,"ok")}
+  if(i===9){retrieve();addLog(`MMR/context compression reduced redundancy → ${context} context units.`,"ok")}
+  if(i===10){
+    retrieve();
+    const ans=`The simulated RAG pipeline improves retrieval by using multiple complementary signals. Dense retrieval captures semantic similarity, while sparse retrieval such as BM25 is useful for exact terms and rare keywords. Their rankings can be combined with Reciprocal Rank Fusion (RRF). A second-stage cross-encoder reranker then examines the query and each candidate passage together, usually improving ordering at higher computational cost. Finally, MMR/context compression reduces redundancy before the selected evidence is placed into the grounded prompt. [D1-C1] [D2-C1]`;
+    document.getElementById("answer").textContent=ans; addLog("Grounded prompt assembled and simulated answer generated.","ok");
+  }
+  if(i===11){
+    document.getElementById("recall").textContent="0.92";document.getElementById("mrr").textContent="0.86";
+    document.getElementById("faith").textContent="0.95";document.getElementById("latency").textContent="184 ms";
+    document.getElementById("evalText").textContent="Recall@5 estimates whether relevant evidence entered the candidate set. MRR rewards a relevant result appearing early. Faithfulness checks whether generated claims are supported by retrieved context. In production, evaluate retrieval and generation separately and use a representative test set.";
+    addLog("Evaluation complete: retrieval + grounded generation metrics computed.","ok");
+  }
+  updateMetrics();
+}
+async function runFull(){
+  if(running)return; running=true; document.getElementById("status").textContent="Running…";
+  for(let i=0;i<stages.length;i++){
+    selectStage(i); document.querySelectorAll(".step")[i].classList.add("done");
+    await runStage(i); await sleep(180);
+  }
+  document.getElementById("status").textContent="Complete";running=false;
+}
+function reset(){
+  current=0;chunks=dense=reranked=context=0;running=false;log.innerHTML="";
+  document.getElementById("status").textContent="Ready";
+  document.getElementById("results").innerHTML="";
+  document.getElementById("answer").textContent="Run the pipeline to construct a grounded answer.";
+  ["recall","mrr","faith","latency"].forEach(x=>document.getElementById(x).textContent="—");
+  document.getElementById("evalText").textContent="Evaluation appears after the retrieval and generation stages.";
+  document.querySelectorAll(".step").forEach(e=>e.classList.remove("done"));
+  updateMetrics();selectStage(0);addLog("Simulator reset. Ready to run.","info");
+}
+document.getElementById("run").onclick=runFull;
+document.getElementById("reset").onclick=reset;
+document.getElementById("step").onclick=async()=>{await runStage(current);if(current<stages.length-1)selectStage(current+1)};
+document.getElementById("sample").onclick=()=>{docs.value=`RAG architecture has two major phases: indexing and query-time retrieval. During indexing, documents are parsed, normalized, chunked and embedded. The resulting vectors are stored in a vector database together with metadata.
+
+Recursive chunking uses separators such as headings, paragraphs and sentences while respecting a target size. Semantic chunking attempts to keep passages with similar meaning together. Parent-child retrieval stores small child chunks for precise matching while returning a larger parent section for generation.
+
+Dense retrieval uses vector similarity. Sparse retrieval such as BM25 relies on lexical term statistics. Hybrid retrieval combines both because semantic and lexical signals fail in different ways.
+
+RRF can fuse rankings from different retrievers. A reranker then scores query-document pairs with a stronger model. Cross-encoders are accurate but expensive because the query and candidate must be processed together.
+
+MMR selects relevant but diverse passages, reducing duplicate evidence. Contextual compression can extract only the parts of retrieved passages needed for the query.
+
+Advanced RAG systems may use query rewriting, multi-query retrieval, HyDE, metadata filtering, temporal filtering, parent-child retrieval and adaptive top-k selection.
+
+Evaluation should include retrieval recall@k, MRR or nDCG, answer relevance, faithfulness, citation accuracy, latency and token cost.`;addLog("Advanced RAG sample loaded.","ok");reset()};
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+ document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");
+ document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));document.getElementById(t.dataset.tab).classList.add("active");
+});
+buildUI();updateMetrics();addLog("Simulator initialized. Click “Run full pipeline”.","info");
+</script>
+</body>
+</html>
